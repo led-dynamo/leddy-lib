@@ -11,10 +11,13 @@ language = "rust"
 vcs = "git"
 url = "https://github.com/led-dynamo/leddy-lib"
 
+[dependencies]
+"led-dynamo/leddy-interfaces" = "^0.1.0"
+
 [publish]
 include_readme = true
 tag_format = "v{version}"
-exclude = [".env", ".env.*", ".vendor/**", ".zed/**", "target/**", "**/*.log"]
+exclude = [".env", ".env.*", ".vendor/.zed/**", ".zed/**", "target/**", "**/*.log"]
 
 [publish.native]
 registry = "crates-io"
@@ -22,6 +25,7 @@ package = "leddy-lib"
 
 [install]
 adapter = "rust"
+dir = ".vendor/.zed"
 
 [scripts]
 test = "cargo test --all-targets"
