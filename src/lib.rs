@@ -86,8 +86,7 @@ impl FrameBuffer {
             } else {
                 physical_row
             };
-            let row_starts_on_right =
-                starts_on_right ^ (self.serpentine && physical_row % 2 == 1);
+            let row_starts_on_right = starts_on_right ^ (self.serpentine && physical_row % 2 == 1);
 
             for physical_column in 0..self.width {
                 let x = if row_starts_on_right {
@@ -118,8 +117,7 @@ pub fn scroll_cycle_duration_ms(
     }
 
     let travel = content_width.saturating_add(display_width).max(1);
-    let duration =
-        ((travel as f64 * 1_000.0) / f64::from(speed_pixels_per_second)).ceil();
+    let duration = ((travel as f64 * 1_000.0) / f64::from(speed_pixels_per_second)).ceil();
 
     if !duration.is_finite() || duration >= u64::MAX as f64 {
         Some(u64::MAX)
