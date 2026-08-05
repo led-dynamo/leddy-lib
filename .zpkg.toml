@@ -1,0 +1,27 @@
+[package]
+org = "led-dynamo"
+name = "leddy-lib"
+version = "0.1.0"
+description = "Shared framebuffer, font, layout, and scrolling renderer for Leddy"
+license = "MIT"
+keywords = ["led-matrix", "renderer", "framebuffer", "scrolling-text", "rust"]
+language = "rust"
+
+[package.repository]
+vcs = "git"
+url = "https://github.com/led-dynamo/leddy-lib"
+
+[publish]
+include_readme = true
+tag_format = "v{version}"
+exclude = [".env", ".env.*", ".vendor/**", ".zed/**", "target/**", "**/*.log"]
+
+[publish.native]
+registry = "crates-io"
+package = "leddy-lib"
+
+[install]
+adapter = "rust"
+
+[scripts]
+test = "cargo test --all-targets"

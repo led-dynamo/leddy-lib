@@ -1,0 +1,10 @@
+[package]
+name = "leddy-lib"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Framebuffer and scrolling-text renderer for Leddy"
+repository = "https://github.com/led-dynamo/leddy-lib"
+
+[dependencies]
+leddy-interfaces = { git = "https://github.com/led-dynamo/leddy-interfaces" }
