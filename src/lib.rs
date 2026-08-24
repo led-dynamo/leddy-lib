@@ -1,6 +1,13 @@
 #![forbid(unsafe_code)]
 
+mod firmware;
 mod font5x7;
+mod safety;
+
+pub use firmware::{
+    FirmwareUpdateController, FirmwareUpdateError, FirmwareUpdatePolicy, TrustedFirmwareKey,
+};
+pub use safety::{FaultResetError, SafetyController, SafetyDecision, SafetyObservation};
 
 use leddy_interfaces::{
     DisplayConfig, MessageEnvelope, PixelOrigin, RepeatMode, ScrollDirection, ValidationError,
@@ -216,6 +223,7 @@ mod tests {
             brightness: 96,
             serpentine: true,
             origin: PixelOrigin::TopLeft,
+            safety_limits: None,
         }
     }
 
@@ -237,6 +245,7 @@ mod tests {
             brightness: 96,
             serpentine,
             origin,
+            safety_limits: None,
         };
         let mut frame = FrameBuffer::new(&config);
         for (index, value) in (1_u8..=6).enumerate() {
