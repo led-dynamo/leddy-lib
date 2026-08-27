@@ -124,7 +124,6 @@ impl SafetyController {
     }
 
     fn detect_faults(&self, observation: SafetyObservation) -> Vec<SafetyFaultCode> {
-        let mut faults = Vec::new();
         let required_sensor_missing = self.limits.minimum_supply_millivolts.is_some()
             && observation.supply_millivolts.is_none()
             || self.limits.maximum_current_milliamps.is_some()
@@ -132,41 +131,40 @@ impl SafetyController {
             || self.limits.maximum_temperature_millicelsius.is_some()
                 && observation.temperature_millicelsius.is_none();
 
-        if required_sensor_missing {
-            faults.push(SafetyFaultCode::SensorFailure);
-        }
-        if self
-            .limits
-            .minimum_supply_millivolts
-            .zip(observation.supply_millivolts)
-            .is_some_and(|(minimum, observed)| observed < minimum)
-        {
-            faults.push(SafetyFaultCode::UnderVoltage);
-        }
-        if self
-            .limits
-            .maximum_current_milliamps
-            .zip(observation.current_milliamps)
-            .is_some_and(|(maximum, observed)| observed > maximum)
-        {
-            faults.push(SafetyFaultCode::OverCurrent);
-        }
-        if self
-            .limits
-            .maximum_temperature_millicelsius
-            .zip(observation.temperature_millicelsius)
-            .is_some_and(|(maximum, observed)| observed > maximum)
-        {
-            faults.push(SafetyFaultCode::OverTemperature);
-        }
-        if observation
-            .observed_at_unix_ms
-            .saturating_sub(observation.last_authenticated_command_unix_ms)
-            > u64::from(self.limits.communication_timeout_ms)
-        {
-            faults.push(SafetyFaultCode::CommunicationLoss);
-        }
-        faults
+        [
+            (required_sensor_missing, SafetyFaultCode::SensorFailure),
+            (
+                self.limits
+                    .minimum_supply_millivolts
+                    .zip(observation.supply_millivolts)
+                    .is_some_and(|(minimum, observed)| observed < minimum),
+                SafetyFaultCode::UnderVoltage,
+            ),
+            (
+                self.limits
+                    .maximum_current_milliamps
+                    .zip(observation.current_milliamps)
+                    .is_some_and(|(maximum, observed)| observed > maximum),
+                SafetyFaultCode::OverCurrent,
+            ),
+            (
+                self.limits
+                    .maximum_temperature_millicelsius
+                    .zip(observation.temperature_millicelsius)
+                    .is_some_and(|(maximum, observed)| observed > maximum),
+                SafetyFaultCode::OverTemperature,
+            ),
+            (
+                observation
+                    .observed_at_unix_ms
+                    .saturating_sub(observation.last_authenticated_command_unix_ms)
+                    > u64::from(self.limits.communication_timeout_ms),
+                SafetyFaultCode::CommunicationLoss,
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(tripped, code)| tripped.then_some(code))
+        .collect()
     }
 
     fn reconcile_history(&mut self, next_faults: &[SafetyFaultCode], now_unix_ms: u64) {
