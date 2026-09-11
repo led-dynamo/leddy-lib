@@ -1,6 +1,13 @@
 #![forbid(unsafe_code)]
 
+mod firmware;
 mod font5x7;
+mod safety;
+
+pub use firmware::{
+    FirmwareUpdateController, FirmwareUpdateError, FirmwareUpdatePolicy, TrustedFirmwareKey,
+};
+pub use safety::{FaultResetError, SafetyController, SafetyDecision, SafetyObservation};
 
 use leddy_interfaces::{
     DisplayConfig, MessageEnvelope, PixelOrigin, RepeatMode, ScrollDirection, ValidationError,
@@ -57,16 +64,19 @@ impl FrameBuffer {
     }
 
     pub fn serpentine(&self) -> Vec<u8> {
-        let mut output = Vec::with_capacity(self.pixels.len());
-        for y in 0..self.height {
-            let row = &self.pixels[y * self.width..(y + 1) * self.width];
-            if y % 2 == 0 {
-                output.extend_from_slice(row);
-            } else {
-                output.extend(row.iter().rev().copied());
-            }
-        }
-        output
+        (0..self.height)
+            .flat_map(|y| {
+                let reversed = y % 2 == 1;
+                (0..self.width).map(move |column| {
+                    let x = if reversed {
+                        self.width - 1 - column
+                    } else {
+                        column
+                    };
+                    self.get(x, y)
+                })
+            })
+            .collect()
     }
 
     pub fn device_order(&self) -> Vec<u8> {
@@ -78,27 +88,26 @@ impl FrameBuffer {
             self.origin,
             PixelOrigin::BottomLeft | PixelOrigin::BottomRight
         );
-        let mut output = Vec::with_capacity(self.pixels.len());
-
-        for physical_row in 0..self.height {
-            let y = if starts_on_bottom {
-                self.height - 1 - physical_row
-            } else {
-                physical_row
-            };
-            let row_starts_on_right = starts_on_right ^ (self.serpentine && physical_row % 2 == 1);
-
-            for physical_column in 0..self.width {
-                let x = if row_starts_on_right {
-                    self.width - 1 - physical_column
+        (0..self.height)
+            .flat_map(|physical_row| {
+                let y = if starts_on_bottom {
+                    self.height - 1 - physical_row
                 } else {
-                    physical_column
+                    physical_row
                 };
-                output.push(self.get(x, y));
-            }
-        }
+                let row_starts_on_right =
+                    starts_on_right ^ (self.serpentine && physical_row % 2 == 1);
 
-        output
+                (0..self.width).map(move |physical_column| {
+                    let x = if row_starts_on_right {
+                        self.width - 1 - physical_column
+                    } else {
+                        physical_column
+                    };
+                    self.get(x, y)
+                })
+            })
+            .collect()
     }
 }
 
@@ -216,6 +225,7 @@ mod tests {
             brightness: 96,
             serpentine: true,
             origin: PixelOrigin::TopLeft,
+            safety_limits: None,
         }
     }
 
@@ -237,6 +247,7 @@ mod tests {
             brightness: 96,
             serpentine,
             origin,
+            safety_limits: None,
         };
         let mut frame = FrameBuffer::new(&config);
         for (index, value) in (1_u8..=6).enumerate() {
@@ -313,6 +324,14 @@ mod tests {
         assert_eq!(
             numbered_frame(PixelOrigin::BottomRight, true).device_order(),
             vec![6, 5, 4, 1, 2, 3]
+        );
+    }
+
+    #[test]
+    fn serpentine_reverses_every_odd_row() {
+        assert_eq!(
+            numbered_frame(PixelOrigin::TopLeft, false).serpentine(),
+            vec![1, 2, 3, 6, 5, 4]
         );
     }
 
